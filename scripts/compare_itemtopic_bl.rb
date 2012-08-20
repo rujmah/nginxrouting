@@ -11,8 +11,14 @@ bl_fn = 'spreadsheets/bens_full_bl.csv'
 bl_lines = CSV.read(bl_fn, :col_sep => "\t")
 bl_itemids = []
 bl_topicids = []
-bl_itemids = bl_lines.map{ |l| l[4].to_i.to_s unless l[4].nil? or l[4].length < 3 or bl_itemids.include? l[4].to_i.to_s }
-bl_topicids = bl_lines.map{ |l| l[5].to_i.to_s unless l[5].nil? or l[5].length < 3 or bl_topicids.include? l[5].to_i.to_s}
+
+def get_ids lines, n, out_arry
+	out_arry = lines.map{ |l| 
+		l[n].to_i.to_s unless l[n].nil? or l[n].length < 3 or out_arry.include? l[n].to_i.to_s 
+	}
+end
+bl_itemids = get_ids bl_lines, 4, bl_itemids
+bl_topicids = get_ids bl_lines, 5, bl_topicids
 
 
 # iterate through akamai logs and compare any itemids or topicids found
@@ -25,23 +31,24 @@ logs_hastp = []
 logs_nottp = []
 
 
-logs_lines.each_with_index{ |l,i| 
-	out = $1 if l =~ /itemid=([\d]{10,})/i 
+def find_ids id_arry, has_arry, not_arry, rgx, line 
+	out = $1 if line =~ rgx 
 	unless out.nil? or out.length < 3
-		if bl_itemids.include? out
-			logs_hasit << out
+		if id_arry.include? out
+			# has_arry << out unless has_arry.include? out
+			has_arry << [out,line].join(',') unless has_arry.include? out
 		else
-			logs_notit << out
+			# not_arry << out unless not_arry.include? out
+			not_arry << [out,line].join(',') unless not_arry.include? out
 		end
 	end
-	topic = $1 if l =~ /topicid=([\d]{10,})/i
-	unless topic.nil? or topic.length < 3
-		if bl_topicids.include? topic
-			logs_hastp << topic
-		else
-			logs_nottp << topic
-		end
-	end
+end
+
+
+logs_lines.each_with_index{ |l,i| 
+# logs_lines[0..100].each_with_index{ |l,i| 
+	find_ids bl_itemids, logs_hasit, logs_notit, /itemid=([\d]{10,})/i, l
+	find_ids bl_topicids, logs_hastp, logs_nottp, /topicid=([\d]{10,})/i, l
 	puts "processed #{i} lines" if i % 1000 == 0 
 	}
 

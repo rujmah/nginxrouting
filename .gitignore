@@ -7,3 +7,4 @@ mkmf.log
 *.swp
 spreadsheets/*.csv
 spreadsheets/*.xls
+lost_reviews

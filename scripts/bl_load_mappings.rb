@@ -1,6 +1,7 @@
 # bl_load_mappings.rb
 
 require 'csv'
+require 'rails'
 
 # open ben's bl mappings CSv (created)
 
@@ -9,37 +10,59 @@ require 'csv'
 # 	exit
 # end
 blfn = ARGV[0] 
-file2 = ARGV[1]
+# file2 = ARGV[1]
 # blfn = ARGV[0] || 'spreadsheet/bens_full_bl.csv'
-puts "using #{blfn} and #{file2}"
+# puts "using #{blfn} and #{file2}"
 
-blcsv = CSV.read(blfn) #, :col_sep => "\t"
-csv2 = CSV.read(file2) #, :col_sep => "\t"
+blcsv = CSV.read(blfn, :col_sep => "\t") #, :col_sep => "\t"
+# csv2 = CSV.read(file2) #, :col_sep => "\t"
+p blcsv.length
 
-
-extracted = []
+# extracted = []
+notitle = []
 collected = []
-blcsv.each do |r|
-
+blcsv.each_with_index do |r,i|
+	# p r 
 	# istr = $1 if r[0] =~ /([A-Z0-9\.]+)$/
 	# puts istr if csv2.include? istr 
 	# collected  << r unless csv2.include? istr
-	if r[0] =~ /[A-Z]{2}[0-9]{4,}/
-		collected  << r.join(',') 
-	else
-		extracted << r.join(',')
-	end 
+	# if r[0] =~ /[A-Z]{2}[0-9]{4,}/
+	# 	collected  << r.join(',') 
+	# else
+	# 	extracted << r.join(',')
+	# end 
+	
+	cmb = [r[9],r[8],r[7],r[6]]
+	# if cmb.join.blank?
+		# next
+	# end
+	title = ''
+	cmb.each do |c|
+		title = c
+		break unless c.blank?
+	end
+	if title.blank? or title == '0.0' or title.include?('Spreadsheet::Excel')
+		notitle << [i,r].join(',')
+		next
+	end
+
+	collected << [
+		title, r[2], r[3], r[11]
+	].join(',')	
+	# p collected
 
 end
 
-puts blcsv.length
-puts collected.length
-puts csv2.length
+# p blcsv[7]
+# p collected[7]
+# puts blcsv.length
+# puts collected.length
+# puts csv2.length
 
-fn1 = "atomids_collected_"+ Time.now.strftime("%Y%m%d%H%M%S") +".csv"
-fn2 = "atomids_extracted_"+ Time.now.strftime("%Y%m%d%H%M%S") +".csv"
+fn1 = "bl_mapping_v3_"+ Time.now.strftime("%Y%m%d%H%M%S") +".csv"
+fn2 = "bl_mapping_errors_v3_"+ Time.now.strftime("%Y%m%d%H%M%S") +".csv"
 File.open(fn1, 'w') {|f| f.write(collected.join("\n")) }
-File.open(fn2, 'w') {|f| f.write(extracted.join("\n")) }
+File.open(fn2, 'w') {|f| f.write(notitle.join("\n")) }
 
 
 #  grab the canoncical urls (clean urls?)
