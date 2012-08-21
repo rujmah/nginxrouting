@@ -1,6 +1,10 @@
 # TASK 1: grab csv
 require 'csv'
 
+def cEsc str
+	str = Regexp.escape(str)
+	str.gsub(/\//,'\/')
+end
 
 csv_file = ARGV[0] || 'spreadsheets/canonical_renderings_by_john.csv'
 lines = CSV.read(csv_file)
@@ -9,44 +13,61 @@ lines = CSV.read(csv_file)
 lines.shift
 
 out = []
+test = []
 
-def cEsc str
-	str = Regexp.escape(str)
-	str.gsub(/\//,'\/')
-end
 
 # TASK 2: find the `actuals`
 actuals = lines.select { |e| e unless e[0].nil? or e[0].match(/(http)|(www)/)  }
-# 'literals' are literals URLs
-literals = lines.select { |e| e if e[0] =~ /(http)|(www)/  }
 
 # and the '410's 
 fourtens = actuals.map { |e| cEsc(e[0]) if e[2] == '410'  }
 
-
 # write the '410's to one block
 # TEST: does this take longer?
 fourtens.delete_if{ |x| x.nil? }
-str =<<-EOS
+if fourtens
+	str =<<-EOS
 	location ~* .*(#{fourtens.join(")|(")}).* {
 		return 410;
 	}
 EOS
+	out << str
+end
 
-out << str
-test = []
-actuals.each { |e|  
+actuals.each do |e|  
 	next if e[2] == "410"	
 	
 	callstr = cEsc(e[0])
 	str = ["\tlocation ~* .*#{callstr}.* {"]
 	str << "\t\t# #{e[2]}"
-	str << "\t\t rewrite ^ http://www.gov.uk break; # temp: point to home page" unless e[5]
-	str << "\t\t rewrite ^ #{e[5]} permanent;" if e[5]
+	str << "\t\trewrite ^ http://www.gov.uk break; # temp: point to home page" unless e[5]
+	str << "\t\trewrite ^ #{e[5]} permanent;" if e[5]
 	str << "\t}"
 	out << str.join("\n")
 	test << e[0]
-}
+end
+
+# NOTE: Not using literal URLs at the moment 
+# 'literals' are literals URLs
+# literals = lines.select { |e| e if e[0] =~ /(http)|(www)/  }
+# ltest = []
+# literals.each do |e|
+# 	url = $2 if e[0] =~ /(http:\/\/)*www.businesslink.gov.uk\/(.*)$/
+# 	next unless url
+# 	puts e[0], url
+# 	str = ["\tlocation = /x#{url} {"]
+# 	if e[2] == "410"
+# 		str << "\t\treturn 410;"
+# 	else
+# 		str << "\t\t# #{e[2].gsub(/\n/,' ')}"
+# 		str << "\t\trewrite ^ http://www.gov.uk break; # temp: point to home page" unless e[5]
+# 		str << "\t\trewrite ^ #{e[5]} permanent;" if e[5]
+# 	end
+# 	str << "\t}"
+# 	out << str.join("\n")
+# 	test << url
+# end
+
 
 
 out = [
